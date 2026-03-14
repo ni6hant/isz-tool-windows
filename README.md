@@ -1,61 +1,143 @@
-isz-tool
-========
+# ISZtoISO – Windows GUI converter (ISZ → ISO)
 
-isz-tool is a command line utility to manipulate ISZ files (.isz), including
-.isz to .iso conversion
+> ⚙️ **AI‑assisted development**  
+> This project was assembled with the help of an AI language model (OpenAI’s ChatGPT).  
+> The core algorithm was originally written by [**Olivier Serres**](https://github.com/oserres) and a clean GUI wrapper + packaging was added by [**ni6hant**](https://github.com/ni6hant) for debugging and idea integration.
+> [**ni6hant**](https://github.com/ni6hant) would like to point out at this point the deep disgust he feels in using AI to write this code for him knowing it will increase the prices of PC parts so much more that there will be a war. He takes responsibility for the rich vs. poor war that will happen in the future no matter which side he winds up then.
 
-Overview
---------
+---
 
-ISZ files (.isz) are compressed ISO files (also called ISO Zipped). They can be
-opened by software such as Alcohol 120%, Daemon Tools and UltraISO [1].
+## 📦 What is this?
 
-The main goal of this tool is to be able to convert ISZ files to ISO files.
-At the time of writing isz-tool, I couldn't find any program able to handle
-ISZ files under GNU/Linux.
+ISZtoISO is a tiny Windows‑x64 **stand‑alone** program that converts a `.isz` (ISO‑packed) file into a normal `.iso` image.  
+It runs directly from the GitHub releases – you do **not** need Python or any external libraries installed on the target machine.  
 
-ISZ files support the following features :
- - Decompression (using zlib or bzip2)
- - Split files support (.isz, .i01, .i02, ...)
- - CRC checksums of both compressed an uncompressed data
+---
 
-ISZ tool is a small command line tool currently able to :
- - Display informations about an ISZ file (uncompressed size, encryption
-     type...)
- - Verify the file checksum
- - Extract the file to an .iso file
+## 🚀 Quick Start – For the “dumb user”
 
-Currently not supported :
- - Encryption
- - Creation of an .isz file (before creating an .isz file, take into
-   consideration that a .iso.bz2 is much more portable)
+1. **Download** the *latest release* from the [Releases page](https://github.com/ni6hant/isz2iso_gui/releases).  
+   Find the file named `ISZtoISO.exe` inside the archive and extract it to a folder of your choice.
 
-Usage
------
+2. **Run** `ISZtoISO.exe`.  
+   A small window will appear with two file fields, a *Browse…* button on each side, a *Convert → ISO* button and a progress bar.
 
-./isz-tool.py info file.isz
-  Print general information about file.isz
+3. **Choose the source file**  
+   - Click **Browse…** next to *Source ISZ file* and select the first `.isz` file of your multi‑part set (e.g. `image.isz`).  
+   - The program will automatically look for the other parts (`image.part01.isz`, `image.part02a.isz`, …).  
+   - If no other parts are needed the conversion will still work.
 
-./isz-tool.py verify file.isz
-  Verify the CRC of file.isz
+4. **Choose the destination**  
+   - Click **Browse…** next to *Destination ISO* and pick the folder where you want the resulting `.iso` to be written.  
+   - The default suggestion is the same name as the source file but with the extension changed to `.iso`.
 
-./isz-tool.py verify --slow file.isz
-  Attempt to decompress and verify the CRC of file.isz
+5. **Convert**  
+   - Click **Convert → ISO**.  
+   - The progress bar at the bottom will update as blocks are decompressed.  
+   - When finished a dialog box will pop up saying **“Converted to: …”**
 
-./isz-tool.py isz2iso file.isz file.iso
-  Convert file.isz to an ISO file
+6. **Done!**  
+   The `.iso` is now ready to be mounted, burned to DVD, or used in a virtual machine.
 
-Dependencies
-------------
+> **Common question**  
+> *Why do I get an “Error: Unable to read block” message?*  
+> The most frequent cause is a missing part of a multi‑file set. Make sure the whole series is in the same directory with the exact filenames the program expects.  
 
-Python 3.2 is required to run isz-tool
+---
 
-Author
-------
+## 🛠️ Building the executable – For developers
 
-Olivier Serres - olivier.serres@gmail.com
+If you want to build the `.exe` yourself (for example, after making changes or updating the GUI), follow these steps:
 
-Links
------
-[1] http://en.wikipedia.org/wiki/UltraISO#ISZ_format
+### 1️⃣ Prerequisites
 
+| Item | Version | Why |
+|------|---------|-----|
+| Python | ≥ 3.10 | Needed to run [PyInstaller](https://www.pyinstaller.org) |
+| pip | – | Package installer (comes with Python) |
+| Git | – | Optional – to clone the repo |
+
+> NOTE: The project was written and tested on **Windows‑10 x64**.  
+> If you run on a different OS, you’ll need to cross‑compile or rebuild on a Windows machine.
+
+### 2️⃣ Get the source
+
+```bash
+git clone https://github.com/ni6hant/isz2iso_gui.git
+cd isz2iso_gui
+```
+
+> If you don’t have git, download the ZIP from the repository and extract it.
+
+### 3️⃣ Create a virtual environment (recommended)
+
+```bash
+python -m venv .venv
+.\.venv\Scripts\activate   # on cmd.exe, use .venv\Scripts\activate.bat
+# or:  source .venv/bin/activate  (on Unix)
+```
+
+### 4️⃣ Install build dependencies
+
+```bash
+pip install --upgrade pip setuptools wheel
+pip install pyinstaller
+```
+
+> **Tip:** If you already have PyInstaller installed globally, you still get a clean copy inside the virtualenv.
+
+### 5️⃣ Run PyInstaller
+
+```bash
+pyinstaller --clean --onefile --noconsole --name ISZtoISO --icon isztosoft.ico isz2iso_gui.py
+```
+
+> - `--clean` – removes old build artifacts.  
+> - `--onefile` – bundles everything into a single `.exe`.  
+> - `--noconsole` – hides the console window.  
+> - `--icon` – optional – use a .ico file to give the executable an icon.  
+> - `isz2iso_gui.py` – entry point (the file we provided).
+
+> After a few seconds a **`dist/ISZtoISO.exe`** file will appear.  
+> You can copy it anywhere – it contains its own Python interpreter and all dependencies.
+
+### 6️⃣ Create a release
+
+1. Zip the `dist` folder (or just the `ISZtoISO.exe`).  
+2. Upload the archive to the *Releases* section of your GitHub repo.  
+3. Add a short release note (e.g. “Version 1.2.0 – progress bar added, minor bugfixes”).  
+
+### 🧪 Quick test
+
+```bash
+# On a clean Windows machine (no Python)
+D:\temp\IszToIso\ISZtoISO.exe   # just run it
+```
+
+The program should launch, show the GUI and perform conversions as described above.
+
+---
+
+## 📄 License
+
+This project is licensed under the **GNU General Public License v3.0** (or any later version).  
+The original ISZ code (by Olivier Serres) is also licensed GPL‑3.0; see the file LICENSE or the header in the source for details.
+
+---
+
+## 👥 Acknowledgements
+
+- **Olivier Serres** – original ISZ‑to‑ISO algorithm.  
+- **ni6hant** – debugging, adding the GUI, packaging, and the overall idea to make this a stand‑alone Windows app.  
+- **OpenAI** – the AI model that helped structure the code and documentation.  
+
+---
+
+## 📌 FAQ (quick references)
+
+| Question | Answer |
+|----------|--------|
+| **Do I need an internet connection to run the exe?** | No, all runtime dependencies are bundled. |
+| **Will the exe work on PowerShell?** | Yes, simply double‑click or run from PowerShell – it behaves like any other native Windows program. |
+| **Can I use it with a Multi‑Part ISZ set that uses a non‑standard naming scheme?** | Only the three following patterns are supported: `image.i01.isz`, `image.part01.isz`, `image.part001.isz`. |
+| **What version of Python is included?** | The executable contains Python 3.10.12 (embedded). |
