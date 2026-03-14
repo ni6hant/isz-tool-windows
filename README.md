@@ -15,9 +15,9 @@ It runs directly from the GitHub releases – you do **not** need Python or any 
 
 ---
 
-## 🚀 Quick Start – For the “dumb user”
+## 🚀 For Users:
 
-1. **Download** the *latest release* from the [Releases page](https://github.com/ni6hant/isz2iso_gui/releases).  
+1. **Download** the *latest release* from the [Releases page](https://github.com/ni6hant/isz-tool-windows/releases/).  
    Find the file named `ISZtoISO.exe` inside the archive and extract it to a folder of your choice.
 
 2. **Run** `ISZtoISO.exe`.  
