@@ -3,6 +3,7 @@
 > ⚙️ **AI‑assisted development**  
 > This project was assembled with the help of an AI language model (OpenAI’s ChatGPT).  
 > The core algorithm was originally written by [**Olivier Serres**](https://github.com/oserres) and a clean GUI wrapper + packaging was added by [**ni6hant**](https://github.com/ni6hant) for debugging and idea integration.
+> 
 > [**ni6hant**](https://github.com/ni6hant) would like to point out at this point the deep disgust he feels in using AI to write this code for him knowing it will increase the prices of PC parts so much more that there will be a war. He takes responsibility for the rich vs. poor war that will happen in the future no matter which side he winds up then.
 
 ---
