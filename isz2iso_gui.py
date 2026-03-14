@@ -255,112 +255,175 @@ class ISZ_File:
 
 # ---- Original code ends here ----
 
-
-# --------------------------------------------------------------
-# GUI
-# --------------------------------------------------------------
+# ------------------------------------------------------------------
+# GUI application
+# ------------------------------------------------------------------
 class Application(tk.Tk):
-
     def __init__(self):
         super().__init__()
-        self.title('ISZ → ISO converter')
+        self.title("ISZ → ISO converter")
         self.resizable(False, False)
+        self.eval("tk::PlaceWindow . center")
 
-        # center the dialog
-        self.geometry('400x200')
-        self.eval('tk::PlaceWindow . center')
-
-        # vars
-        self.src_file = tk.StringVar()
+        # ------------------------------------------------------------------
+        # Variables
+        # ------------------------------------------------------------------
+        self.src_file  = tk.StringVar()
         self.dest_file = tk.StringVar()
 
-        # layout
+        # ------------------------------------------------------------------
+        # Layout
+        # ------------------------------------------------------------------
         frm = ttk.Frame(self, padding=(10, 10, 10, 10))
         frm.grid(row=0, column=0, sticky='nsew')
         frm.columnconfigure(1, weight=1)
 
-        ttk.Label(frm, text='Source ISZ file:').grid(row=0, column=0, sticky='w')
-        src_entry = ttk.Entry(frm, textvariable=self.src_file, width=40)
-        src_entry.grid(row=0, column=1, sticky='ew', padx=(0, 5))
-        ttk.Button(frm, text='Browse…', command=self.browse_src).grid(row=0, column=2)
+        # Source – line 0
+        ttk.Label(frm, text="Source ISZ file:").grid(row=0, column=0, sticky='w')
+        self.src_entry = ttk.Entry(frm, textvariable=self.src_file, width=40)
+        self.src_entry.grid(row=0, column=1, sticky='ew', padx=(0, 5))
+        self.browse_src_btn = ttk.Button(frm, text='Browse…', command=self.browse_src)
+        self.browse_src_btn.grid(row=0, column=2)
 
-        ttk.Label(frm, text='Destination ISO:').grid(row=1, column=0, sticky='w')
-        dest_entry = ttk.Entry(frm, textvariable=self.dest_file, width=40)
-        dest_entry.grid(row=1, column=1, sticky='ew', padx=(0, 5))
-        ttk.Button(frm, text='Browse…', command=self.browse_dest).grid(row=1, column=2)
+        # Destination – line 1
+        ttk.Label(frm, text="Destination ISO:").grid(row=1, column=0, sticky='w')
+        self.dest_entry = ttk.Entry(frm, textvariable=self.dest_file, width=40)
+        self.dest_entry.grid(row=1, column=1, sticky='ew', padx=(0, 5))
+        self.browse_dest_btn = ttk.Button(frm, text='Browse…', command=self.browse_dest)
+        self.browse_dest_btn.grid(row=1, column=2)
 
-        # Show a progress bar only if we want; for now just a simple status label
+        # Progress bar – line 2
+        self.progress_bar = ttk.Progressbar(frm, orient='horizontal',
+                                            length=320, mode='determinate')
+        self.progress_bar.grid(row=2, columnspan=3, sticky='ew', pady=(5, 0))
+        self.progress_bar['maximum'] = 0
+
+        # Status label – line 3
         self.status_lbl = ttk.Label(frm, text='Ready', anchor='center')
-        self.status_lbl.grid(row=2, column=0, columnspan=3, pady=(10, 0), sticky='ew')
+        self.status_lbl.grid(row=3, column=0, columnspan=3, pady=(5, 0), sticky='ew')
 
-        # convert button
-        ttk.Button(frm, text='Convert → ISO', command=self.convert).grid(row=3, column=0, columnspan=3, pady=(10, 0))
+        # Convert button – line 4
+        self.convert_btn = ttk.Button(frm, text='Convert → ISO', command=self.convert)
+        self.convert_btn.grid(row=4, column=0, columnspan=3, pady=(10, 0))
 
-    # --------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # File selectors
+    # ------------------------------------------------------------------
     def browse_src(self):
         path = filedialog.askopenfilename(
             title='Select source ISZ file',
-            filetypes=[('ISZ files', '*.isz'), ('All files', '*.*')]
-        )
+            filetypes=[('ISZ files', '*.isz'), ('All files', '*.*')])
         if path:
             self.src_file.set(path)
-            # auto–guess destination if not already set
             if not self.dest_file.get():
-                guess = os.path.splitext(path)[0] + '.iso'
-                self.dest_file.set(guess)
+                self.dest_file.set(os.path.splitext(path)[0] + '.iso')
 
-    # --------------------------------------------------------------------
     def browse_dest(self):
         path = filedialog.asksaveasfilename(
             title='Select destination ISO',
             defaultextension='.iso',
-            filetypes=[('ISO files', '*.iso'), ('All files', '*.*')]
-        )
+            filetypes=[('ISO files', '*.iso'), ('All files', '*.*')])
         if path:
             self.dest_file.set(path)
 
-    # --------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Conversion – runs in a background thread
+    # ------------------------------------------------------------------
     def convert(self):
         src = self.src_file.get()
-        dst = self.dest_file.get()
+        dest = self.dest_file.get()
         if not src or not os.path.isfile(src):
             messagebox.showerror('Error', 'Please choose a valid .isz file.')
             return
-        if not dst:
+        if not dest:
             messagebox.showerror('Error', 'Please choose a destination file.')
             return
 
-        # Disable UI while converting
-        self.status_lbl.config(text='Converting…')
-        self.update_idletasks()
+        # Disable UI + initialise UI widgets
+        self.disable_ui()
+        self.progress_bar['value'] = 0
+        self.progress_bar['maximum'] = 0
+        self.status_lbl.config(text='Preparing…')
 
-        # Run conversion in a background thread so that the UI stays responsive
-        thread = threading.Thread(target=self._convert_worker, args=(src, dst), daemon=True)
-        thread.start()
+        # Launch worker thread
+        threading.Thread(target=self._convert_worker,
+                         args=(src, dest), daemon=True).start()
 
-    # --------------------------------------------------------------------
-    def _convert_worker(self, src, dst):
+    def _convert_worker(self, src, dest):
         try:
             isz = ISZ_File()
             isz.open_isz_file(src)
-            isz.extract_to(dst)
+
+            total = len(isz.chunk_pointers)
+            # set the maximum once we have the size
+            self.after(0, lambda: self.set_progress_max(total))
+
+            # The conversion – write block by block, update progress
+            crc = 0
+            with open(dest, 'wb') as outf:
+                for i in range(total):
+                    data = isz.decompress_block(i)
+                    outf.write(data)
+                    crc = zlib.crc32(data, crc) & 0xffffffff
+                    # UI‑safe progress update
+                    self.after(0, lambda cur=i+1: self.update_progress(cur))
+
             isz.close_file()
-            self.status_lbl.config(text='Done!')
-            messagebox.showinfo('Success', f'Converted to:\n{dst}')
+
+            # CRC check – identical to the original extract_to()
+            if (~crc) & 0xffffffff != isz.isz_header.checksum1:
+                raise Exception('CRC error during extraction')
+
+            # Success → re‑enable UI & show a happy dialog
+            self.after(0, lambda: self.on_success(dest))
         except Exception as exc:
-            self.status_lbl.config(text='Error')
-            messagebox.showerror('Error', f'Failed:\n{exc}')
-        finally:
-            # re‑enable the GUI
-            self.after(0, self._enable_ui)
+            # Failure → re‑enable UI & show an error dialog
+            self.after(0, lambda: self.on_error(str(exc)))
 
-    def _enable_ui(self):
-        self.status_lbl.config(text='Ready')
-        # We could re‑enable buttons/entries if we had disabled them
+    # ------------------------------------------------------------------
+    # Helper methods that run in the *main* (UI) thread
+    # ------------------------------------------------------------------
+    def set_progress_max(self, max_value):
+        self.progress_bar['maximum'] = max_value
+        self.progress_bar['value'] = 0
 
-# --------------------------------------------------------------
-# MAIN
-# --------------------------------------------------------------
-if __name__ == '__main__':
+    def update_progress(self, current):
+        self.progress_bar['value'] = current
+        max_val = self.progress_bar['maximum']
+        self.status_lbl.config(
+            text=f'Converting {current}/{max_val} blocks ({current*100//max_val} %)')
+
+    def on_success(self, dest):
+        self.enable_ui()
+        self.status_lbl.config(text='Done')
+        messagebox.showinfo('Success', f'Converted to:\n{dest}')
+
+    def on_error(self, msg):
+        self.enable_ui()
+        self.status_lbl.config(text='Error')
+        messagebox.showerror('Error', msg)
+
+    # ------------------------------------------------------------------
+    # UI enable / disable helpers
+    # ------------------------------------------------------------------
+    def disable_ui(self):
+        self.convert_btn['state'] = tk.DISABLED
+        self.src_entry['state'] = tk.DISABLED
+        self.dest_entry['state'] = tk.DISABLED
+        self.browse_src_btn['state'] = tk.DISABLED
+        self.browse_dest_btn['state'] = tk.DISABLED
+
+    def enable_ui(self):
+        self.convert_btn['state'] = tk.NORMAL
+        self.src_entry['state'] = tk.NORMAL
+        self.dest_entry['state'] = tk.NORMAL
+        self.browse_src_btn['state'] = tk.NORMAL
+        self.browse_dest_btn['state'] = tk.NORMAL
+
+# ------------------------------------------------------------------
+# Run the application
+# ------------------------------------------------------------------
+if __name__ == "__main__":
     app = Application()
     app.mainloop()
+
